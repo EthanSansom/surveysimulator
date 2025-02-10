@@ -13,10 +13,11 @@ new_variable_promise <- function(
     example = example,
     validator = validator,
     simulator = simulator,
-    class = c(subclass, cls_nm("variable"))
+    class = c(subclass, cls_nm("variable_promise"))
   )
 }
 
+#' @export
 count <- function(min, max, missing_perc = 0, name = "x") {
   force(min)
   force(max)
@@ -47,6 +48,7 @@ count <- function(min, max, missing_perc = 0, name = "x") {
   )
 }
 
+#' @export
 range <- function(min, max, missing_perc = 0, name = "x") {
   force(min)
   force(max)
@@ -80,6 +82,7 @@ range <- function(min, max, missing_perc = 0, name = "x") {
   )
 }
 
+#' @export
 binary <- function(missing_perc = 0, name = "x") {
   force(missing_perc)
   force(name)
@@ -91,10 +94,10 @@ binary <- function(missing_perc = 0, name = "x") {
   }
   simulator <- function(size, seed) {
     set.seed(seed)
-    out <- sample(0:1, size = size, replace = TRUE)
+    out <- sample(c(0L, 1L), size = size, replace = TRUE)
     simulate_missing_perc(out, missing_perc = missing_perc, seed = seed)
   }
-  example <- commas(c(0, 1, if (missing_perc > 0) NA))
+  example <- commas(c(0L, 1L, if (missing_perc > 0) NA))
 
   new_variable_promise(
     name = name,
@@ -106,6 +109,7 @@ binary <- function(missing_perc = 0, name = "x") {
 }
 
 # TODO: Eventually this would be a factor with correct levels or a character
+#' @export
 categorical <- function(values, missing_perc = 0, name = "x") {
   force(values)
   force(missing_perc)
@@ -132,7 +136,14 @@ categorical <- function(values, missing_perc = 0, name = "x") {
   )
 }
 
-# Helpers ----------------------------------------------------------------------
+# predicates -------------------------------------------------------------------
+
+#' @export
+is_variable_promise <- function(x) {
+  inherits(x, cls_nm("variable_promise"))
+}
+
+# helpers ----------------------------------------------------------------------
 
 simulate_missing_perc <- function(x, missing_perc = 0, seed = 1) {
   if (missing_perc <= 0) {
