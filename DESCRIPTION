@@ -15,6 +15,7 @@ Imports:
     cli,
     modelsummary,
     rlang,
-    tibble
+    tibble,
+    tidyselect
 URL: https://github.com/EthanSansom/surveysimulator
 BugReports: https://github.com/EthanSansom/surveysimulator/issues
