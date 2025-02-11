@@ -1,3 +1,28 @@
+# todos ------------------------------------------------------------------------
+
+#### Distributions
+#
+# The next big step will be to allow a variable promise to have a specific
+# distribution function, potentially a marginal based on a joint distribution
+# specified by a model. Right now all distributions are more-or-less uniform.
+#
+# We'd also want to include models of not-at-random missingness.
+
+#### Remove the vestigial `seed` argument
+#
+# A bug arises when you set the seed before generating each variable where the
+# sampling scheme is exactly the same. Try the below for an example:
+#
+# set.seed(1)
+# sample(c(0, 1), size = 10, replace = TRUE)
+#
+# set.seed(1)
+# sample(c("A", "B"), size = 10, replace = TRUE)
+#
+# I've left the `seed` argument in some places for compatibility, but it
+# should be removed / revised.
+
+
 # constructors -----------------------------------------------------------------
 
 new_variable_promise <- function(
@@ -35,9 +60,9 @@ count <- function(min, max, missing_perc = NA, name = "x") {
     if (no_missing) chk::chk_not_any_na(x, x_name = x_name)
   }
   simulator <- function(size, seed) {
-    set.seed(seed)
+    # set.seed(seed)
     out <- sample(seq(min, max), size = size, replace = TRUE)
-    simulate_missing_perc(out, missing_perc = missing_perc, seed = seed)
+    simulate_missing_perc(out, missing_perc = missing_perc)
   }
   example <- commas(c(seq(min, max), if (!no_missing) NA))
 
@@ -66,11 +91,11 @@ range <- function(min, max, missing_perc = NA, name = "x") {
     if (no_missing) chk::chk_not_any_na(x, x_name = x_name)
   }
   simulator <- function(size, seed) {
-    set.seed(seed)
+    # set.seed(seed)
     # TODO: We'd eventually want to allow these variable promises to accept
     # a custom distribution function.
     out <- runif(size, min = min, max = max)
-    simulate_missing_perc(out, missing_perc = missing_perc, seed = seed)
+    simulate_missing_perc(out, missing_perc = missing_perc)
   }
   example <- commas(c(
     round(runif(4, min = min, max = max), 2),
@@ -98,11 +123,11 @@ binary <- function(missing_perc = NA, name = "x") {
     chk::chk_subset(x, values = c(0, 1, if (!no_missing) NA), x_name = x_name)
   }
   simulator <- function(size, seed) {
-    set.seed(seed)
+    # set.seed(seed)
     out <- sample(c(0L, 1L), size = size, replace = TRUE)
-    simulate_missing_perc(out, missing_perc = missing_perc, seed = seed)
+    simulate_missing_perc(out, missing_perc = missing_perc)
   }
-  example <- commas(c(0L, 1L, if (no_missing) NA))
+  example <- commas(c(0L, 1L, if (!no_missing) NA))
 
   new_variable_promise(
     name = name,
@@ -128,9 +153,9 @@ categorical <- function(values, missing_perc = NA, name = "x") {
     chk::chk_subset(x, values = c(values, if (!no_missing) NA), x_name = x_name)
   }
   simulator <- function(size, seed) {
-    set.seed(seed)
+    # set.seed(seed)
     out <- sample(values, size = size, replace = TRUE)
-    simulate_missing_perc(out, missing_perc = missing_perc, seed = seed)
+    simulate_missing_perc(out, missing_perc = missing_perc)
   }
   example <- commas(c(encodeString(values, quote = '"'), if (!no_missing) NA))
 
@@ -182,11 +207,11 @@ declare_raw_variables <- function(.data, ...) {
 # helpers ----------------------------------------------------------------------
 
 # TODO: Eventually we'll want to model not-at-random missingness
-simulate_missing_perc <- function(x, missing_perc = 0, seed = 1) {
+simulate_missing_perc <- function(x, missing_perc = 0) {
   if (is.na(missing_perc) || missing_perc <= 0) {
     return(x)
   }
-  set.seed(1)
+  # set.seed(seed)
   x[runif(n = length(x)) <= missing_perc] <- NA
   x
 }
