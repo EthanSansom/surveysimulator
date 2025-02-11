@@ -213,6 +213,6 @@ expected_at_bullets <- function(col, col_nm, test, loc, be, not) {
 
   c(
     i = paste0("Expected column `", col_nm, "` to be ", be, " ", at_locations(loc)),
-    x = paste0("Column `", col_nm, "` is ", not, " at ", at_locations(!valid_at))
+    x = paste0("Column `", col_nm, "` is ", not, " ", at_locations(loc[!valid_at]))
   )
 }
