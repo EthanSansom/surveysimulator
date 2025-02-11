@@ -1,0 +1,174 @@
+---
+title: surveysimulator
+output:
+  github_document:
+always_allow_html: yes
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+{surveysimulator} is a package for simulating potentially-complex survey 
+datasets with [survey skip logic](https://www.surveymonkey.com/product/features/survey-logic/)
+and other dependencies between variables.
+
+The intention of {surveysimulator} is to provide a fast and easy mechanism to
+generate simulated survey data as soon as a survey instrument has been designed.
+Instead of waiting for survey data to arrive to begin your analysis, you can
+immediately start writing code to clean and analyze your anticipated data
+using a simulated dataset of the correct structure.
+
+Once your survey data *does* arrive, {surveysimulator} provides functions for
+validating your actual data against the expected data that you've simulated, allowing
+for fast surfacing of data-collection errors.
+
+## Installation
+
+You can install the development version of {surveysimulator} from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("EthanSansom/surveysimulator")
+```
+
+## Features
+
+The `<dataset_promise>` class is a the back-bone of {surveysimulator}. As the
+name suggests, a `<dataset_promise>` is the promise of a dataset with a given
+structure.
+
+```{r dataset}
+library(dplyr, warn.conflicts = FALSE)
+library(surveysimulator)
+
+# Create a <dataset_promise> using `new_dataset()`
+dataset <- new_dataset()
+print(dataset)
+```
+
+{survey_simulator} provides the following verbs which, using a familiar {dplyr}-like
+syntax, allow you to specify the structure of your simulated dataset.
+
+- `declare_raw_variables()`, declare the names and types of variables in the dataset
+- `declare_derived_variables()`, declare the names and formulation of variables composed of raw variables
+- `declare_survey_logic()`, declare relationships between variables enforced by survey logic
+- `declare_models()`, declare expected relationships between variables via a model specification (not implemented)
+
+Catchier names for these verbs (and this package) are pending further development. 
+Until then, observe their use below.
+
+```{r verbs}
+dataset <- dataset |>
+  
+	# Declare the variables to simulate, specifying their name and type
+	declare_raw_variables(
+		edu_yrs = count(min = 0, max = 30),
+		employed = binary(missing_perc = 0.1),
+		work_hrs = range(min = 0, max = 60),
+		pay_type = categorical(c("wage", "salary")),
+		wage_amnt = range(min = 0, max = 1000),
+		salary_amnt = range(min = 0, max = 500*1000)
+	) |>
+	
+	# Declare variables derived from others
+	declare_derived_variables(
+		income_amnt = dplyr::case_match(
+			pay_type,
+			"wage" ~ wage_amnt,
+			"salary" ~ salary_amnt
+		)
+	) |>
+	
+	# Declare dependencies between the variables arising from survey logic
+	declare_survey_logic(
+		# If `employed` is missing (i.e. unanswered) or the
+	  # respondent is un-employed, then all other questions should 
+	  # have been skipped (i.e. NA)
+		is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed)),
+		
+		# If `pay_type` is missing, then `*_amnt` questions
+		# should have been skipped
+		is.na(pay_type) ~ skipped(ends_with("_amnt")),
+ 		
+		# If `pay_type` is "wage", `salary_amnt` should have an
+		# imputed value of `0`. Similar for `wage_amnt`.
+		pay_type == "wage" ~ imputed(salary_amnt, 0),
+		pay_type == "salary" ~ imputed(wage_amnt, 0)
+	)
+```
+
+Our `dataset` now promises to be composed of the variables declared above.
+
+```{r promise-demo}
+print(dataset)
+```
+
+We can make good on this promise using `simulate()`, which creates a dataset
+abiding by the rules we've set using the `declare_*()` family of functions.
+
+```{r simulate}
+simulated <- simulate(dataset, size = 10, seed = 123)
+print(simulated)
+```
+
+Along with simulation, we get data-validation for free via the `assert()` 
+function. `assert()` checks that an `actual` dataset has the same structure
+as an `expected` dataset promise.
+
+```{r assert}
+assert(actual = simulated, expected = dataset)
+```
+
+Datasets created using `simulate()` will pass this assertion by definition. `assert()`
+is most useful for verifying that the raw data you've received matches your expectations.
+
+```{r validation-demo}
+raw_data <- tibble::tibble( # Missing the `income_amnt` column
+  edu_yrs = c(0, 1, 2, 3, 4),
+	employed = c(1, 1, NA, NA, 1),
+	work_hrs = c(5, 10, 1, NA, 20), # Should be NA when `employed` is NA
+	pay_type = c("temp", "wage", NA, NA, "salary"), # "temp" not allowed
+	wage_amnt = c(10, 20, NA, NA, 0),
+	salary_amnt = c(0, 0, NA, NA, 50000)
+)
+assert(actual = raw_data, expected = dataset)
+```
+
+`assert()` currently relies on the [chk](https://poissonconsulting.github.io/chk/) 
+package as the back-end for validation, but custom validation will be used in the
+future.
+
+## Planned Features
+
+Not implemented in this prototype are planned features to:
+- simulate correlations or more advanced dependencies between variables via a model
+- simulate not-at-random missingness
+- generate a correlation / model summary to compare the expected correlation / model in simulation vs. the actual correlation / model realized by actual survey data
+- generate a comparison of not-at-random missingness in the expected and actual data
+
+For example, the code below (not run) demonstrates adding a linear model (e.g. one specified by `lm()`)
+and a probit model (e.g. one specified by `glm(family = binomial(link = "probit")`)
+to the `dataset` object.
+
+```{r model-demo, eval = FALSE}
+dataset |>
+  declare_models(
+    probit(employed ~ edu_yrs),
+    linear(income_amnt ~ 1000 * edu_yrs + 50 * work_hrs)
+  )
+```
+
+In the event that this is not feasible (or useful), a simpler interface can be
+implemented to simulate simple correlations rather than a linear (or other)
+relationship between several variables.
