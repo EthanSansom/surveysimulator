@@ -1,3 +1,33 @@
+# todos ------------------------------------------------------------------------
+
+#### Custom Validation for `assert()`
+#
+# TLDR: In this comment I go back and forth between using the {pointblank}
+# package for validation. While I would like to generate some pointblank-esque
+# HTML reports of data quality using g-table, reactable, or other, the focus
+# of *this* package is simulation, not validation. I think the way to go is to
+# keep things simple, with custom validation functions and a way to specify a
+# general `variable()` promise, onto which the user can add their own validation.
+#
+# We could consider using {pointblank} to do these assertions, since their
+# suite is so huge. See their set of validation functions:
+# https://rstudio.github.io/pointblank/reference/index.html#validation-expectation-and-test-functions
+#
+# You can still create custom expectations as needed using `specially()`:
+# https://rstudio.github.io/pointblank/reference/specially.html
+#
+# I think {pointblank} is the way to go. If the dataset promise was able to produce
+# an `agent` or `informant`, then that could be built on using arbitrary functions.
+# We should also support the addition of arbitrary {pointblank} validation tests
+# in the dataset promise object.
+#
+# Then again, it might be more fun to spin up your own HTML generation
+# using reactable, g-table, or similar. It might be better to make this compatible
+# with other general and simple check packages and keep things simple. Also, this
+# package really *isn't* about validation, it's about survey data simulation. The
+# validation part is a happy by-product of the leg-work required to simulate the
+# correct variables.
+
 # constructor ------------------------------------------------------------------
 
 #' @export
@@ -41,24 +71,34 @@ print.surveysimulator_dataset_promise <- function(x, ...) {
     examples[[i]] <- paste("e.g.", example)
   }
 
-  bullets_var <- format(bullets_var, width = max(nchar(bullets_var)), justify = "left")
-  bullets_var <- paste(bullets_var, examples)
+  if (!is_empty(bullets_var)) {
+    bullets_var <- format(bullets_var, width = max(nchar(bullets_var)), justify = "left")
+    bullets_var <- paste(bullets_var, examples)
+  }
 
   # Gather bullets corresponding to derived variables
   derived_variables <- attr(x, "derived_variables")
-  bullets_dvar <- paste(map_chr(derived_variables, attr, "name"), "<derived>")
+  if (!is_empty(derived_variables)) {
+    bullets_dvar <- paste(map_chr(derived_variables, attr, "name"), "<derived>")
+  } else {
+    bullets_dvar <- character()
+  }
 
   # Gather bullets corresponding to the <survey_logic_promises>
   survey_logic <- attr(x, "survey_logic")
   bullets_svy <- map_chr(survey_logic, attr, "description")
 
   # `cli_bullets()` trims whitespace, which I don't want for bullets
-  cli::cat_line(paste0("<dataset_promise[", length(variables) + length(derived_variables), "]>"))
-  cli::cat_line("# Variables: ")
-  cli::cat_line(paste(cli::symbol$bullet, bullets_var))
-  cli::cat_line(paste(cli::symbol$bullet, bullets_dvar))
-  cli::cat_line("# Survey Logic: ")
-  cli::cat_line(paste(cli::symbol$bullet, bullets_svy))
+  cli::cat_line(paste0("<dataset_promise[?? x ", length(variables) + length(derived_variables), "]>"))
+  if (!is_empty(bullets_var) | !is_empty(bullets_dvar)) {
+    cli::cat_line("# Variables: ")
+    cli::cat_line(paste(cli::symbol$bullet, bullets_var))
+    cli::cat_line(paste(cli::symbol$bullet, bullets_dvar))
+  }
+  if (!is_empty(bullets_svy)) {
+    cli::cat_line("# Survey Logic: ")
+    cli::cat_line(paste(cli::symbol$bullet, bullets_svy))
+  }
 }
 
 # simulate ---------------------------------------------------------------------
@@ -67,6 +107,7 @@ print.surveysimulator_dataset_promise <- function(x, ...) {
 simulate <- function(dataset, size = 0, seed = 1) {
 
   caller_env <- rlang::caller_env()
+  set.seed(seed)
 
   # Generate the variables
   variable_promises <- attr(dataset, "variables")
@@ -103,6 +144,11 @@ simulate <- function(dataset, size = 0, seed = 1) {
 }
 
 # assert -----------------------------------------------------------------------
+
+# TODO: We can streamline this a lot by having custom `validator()` functions
+# which don't emit an error, but do emit a pass or fail message (wrapped in
+# a custom class). Then, the caller of `assert()` can decide if they want pass
+# and fail messages, plus they can specify how verbose the output should be.
 
 #' @export
 assert <- function(actual, expected) {
@@ -237,28 +283,48 @@ assert <- function(actual, expected) {
 
   if (!data_wide_errors && !column_errors && !survey_logic_errors) {
     cli::cli_alert_success("`actual` dataset is as expected!")
-    return(invisible())
+    return(invisible(actual))
   }
 
-  # Emit an error and add formatted `cli` failure messages
-  on.exit(
-    {
-      if (data_wide_errors) {
-        cli::cli_h2("Dataset")
-        cli::cli_bullets(data_wide_bullets)
-      }
-      if (column_errors) {
-        cli::cli_h2("Columns")
-        cli::cli_bullets(column_bullets)
-      }
-      if (survey_logic_errors) {
-        cli::cli_h2("Survey Logic")
-        cli::cli_bullets(survey_logic_bullets)
-      }
-    },
-    add = TRUE
-  )
-  cli::cli_abort("`actual` dataset contained unexpected features.")
+  # Emit an error and add formatted `cli` failure messages.
+
+  # TODO: For the demo I'm throwing a message rather than an error, until
+  #       we format the error messages in a friendly-er way.
+  if (FALSE) {
+    on.exit(
+      {
+        if (data_wide_errors) {
+          cli::cli_h2("Dataset")
+          cli::cli_bullets(data_wide_bullets)
+        }
+        if (column_errors) {
+          cli::cli_h2("Columns")
+          cli::cli_bullets(column_bullets)
+        }
+        if (survey_logic_errors) {
+          cli::cli_h2("Survey Logic")
+          cli::cli_bullets(survey_logic_bullets)
+        }
+      },
+      add = TRUE
+    )
+    cli::cli_abort("`actual` dataset contained unexpected features.")
+  }
+
+  cli::cli_alert_danger("`actual` dataset contained unexpected features.")
+  if (data_wide_errors) {
+    cli::cli_h2("Dataset")
+    cli::cli_bullets(data_wide_bullets)
+  }
+  if (column_errors) {
+    cli::cli_h2("Columns")
+    cli::cli_bullets(column_bullets)
+  }
+  if (survey_logic_errors) {
+    cli::cli_h2("Survey Logic")
+    cli::cli_bullets(survey_logic_bullets)
+  }
+  invisible(actual)
 }
 
 # predicates -------------------------------------------------------------------
@@ -266,5 +332,3 @@ assert <- function(actual, expected) {
 is_dataset_promise <- function(x) {
   inherits(x, cls_nm("dataset_promise"))
 }
-
-# helpers ----------------------------------------------------------------------
