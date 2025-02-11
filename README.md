@@ -39,21 +39,7 @@ with a given structure.
 
 ``` r
 library(dplyr, warn.conflicts = FALSE)
-library(surveysimulator)
-#> 
-#> Attaching package: 'surveysimulator'
-#> The following object is masked from 'package:dplyr':
-#> 
-#>     count
-#> The following object is masked from 'package:stats':
-#> 
-#>     simulate
-#> The following object is masked from 'package:base':
-#> 
-#>     range
-```
-
-``` r
+library(surveysimulator, warn.conflicts = FALSE)
 
 # Create a <dataset_promise> using `new_dataset()`
 dataset <- new_dataset()
@@ -101,7 +87,7 @@ dataset <- dataset |>
     
     # Declare dependencies between the variables arising from survey logic
     declare_survey_logic(
-        # If `employed` is missing (i.e. unanswered) or the
+      # If `employed` is missing (i.e. unanswered) or the
       # respondent is un-employed, then all other questions should 
       # have been skipped (i.e. NA)
         is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed)),
@@ -126,10 +112,10 @@ print(dataset)
 #> # Variables: 
 #> • edu_yrs <count>        e.g. 0, 1, 2, ..., 30, NA
 #> • employed <binary>      e.g. 0, 1, NA
-#> • work_hrs <range>       e.g. 17.22, 6.16, 2.7, 21.43, NA
+#> • work_hrs <range>       e.g. 0.8, 35.64, 41.87, 26.65, NA
 #> • pay_type <categorical> e.g. "wage", "salary", NA
-#> • wage_amnt <range>      e.g. 353.07, 195.53, 968.7, 907.81, NA
-#> • salary_amnt <range>    e.g. 167512.14, 490150.01, 301392.51, 194420.89, NA
+#> • wage_amnt <range>      e.g. 974.6, 984.14, 275.26, 300.27, NA
+#> • salary_amnt <range>    e.g. 214065.04, 346058, 257761.19, 340261.26, NA
 #> • income_amnt <derived>
 #> # Survey Logic: 
 #> • is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed))
@@ -206,13 +192,16 @@ for validation, but custom validation will be used in the future.
 
 ## Planned Features
 
-Not implemented in this prototype are planned features to: - simulate
-correlations or more advanced dependencies between variables via a
-model - simulate not-at-random missingness - generate a correlation /
-model summary to compare the expected correlation / model in simulation
-vs. the actual correlation / model realized by actual survey data -
-generate a comparison of not-at-random missingness in the expected and
-actual data
+Not implemented in this prototype are planned features to:
+
+- simulate correlations or more advanced dependencies between variables
+  via a model
+- simulate not-at-random missingness
+- generate a correlation / model summary to compare the expected
+  correlation / model in simulation vs. the actual correlation / model
+  realized by actual survey data
+- generate a comparison of not-at-random missingness in the expected and
+  actual data
 
 For example, the code below (not run) demonstrates adding a linear model
 (e.g. one specified by `lm()`) and a probit model (e.g. one specified by
