@@ -7,8 +7,9 @@ surveysimulator
 
 {surveysimulator} is a package for simulating potentially-complex survey
 datasets with [survey skip
-logic](https://www.surveymonkey.com/product/features/survey-logic/) and
-other dependencies between variables.
+logic](https://www.surveymonkey.com/product/features/survey-logic/),
+other conditional survey logic, and other dependencies between
+variables.
 
 The intention of {surveysimulator} is to provide a fast and easy
 mechanism to generate simulated survey data as soon as a survey
@@ -19,7 +20,8 @@ correct structure.
 
 Once your survey data *does* arrive, {surveysimulator} provides
 functions for validating your actual data against the expected data that
-you’ve simulated, allowing for fast surfacing of data-collection errors.
+you’ve simulated, allowing data-collection errors to be surfaced
+quickly.
 
 ## Installation
 
@@ -57,8 +59,8 @@ simulated dataset.
   variables composed of raw variables
 - `declare_survey_logic()`, declare relationships between variables
   enforced by survey logic
-- `declare_models()`, declare expected relationships between variables
-  via a model specification (not implemented)
+- `declare_relationships()`, declare expected relationships between
+  variables (e.g. clusters, correlations). This is not implemented.
 
 Catchier names for these verbs (and this package) are pending further
 development. Until then, observe their use below.
@@ -68,6 +70,8 @@ dataset <- dataset |>
   
     # Declare the variables to simulate, specifying their name and type
     declare_raw_variables(
+      # `edu_years` is a whole number 0, 1, ..., 30, where the upper
+      # bound of 30 is a limit set by the electronic survey.
         edu_yrs = count(min = 0, max = 30),
         employed = binary(missing_perc = 0.1),
         work_hrs = range(min = 0, max = 60),
@@ -87,19 +91,19 @@ dataset <- dataset |>
     
     # Declare dependencies between the variables arising from survey logic
     declare_survey_logic(
-      # If `employed` is missing (i.e. unanswered) or the
-      # respondent is un-employed, then all other questions should 
-      # have been skipped (i.e. NA)
+    # If `employed` is missing (i.e. unanswered) or the
+    # respondent is un-employed, then all other questions should 
+    # have been skipped (i.e. NA)
         is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed)),
         
-        # If `pay_type` is missing, then `*_amnt` questions
-        # should have been skipped
+    # If `pay_type` is missing, then `*_amnt` questions
+    # should have been skipped
         is.na(pay_type) ~ skipped(ends_with("_amnt")),
         
-        # If `pay_type` is "wage", `salary_amnt` should have an
+    # If `pay_type` is "wage", `salary_amnt` should have an
         # imputed value of `0`. Similar for `wage_amnt`.
         pay_type == "wage" ~ imputed(salary_amnt, 0),
-        pay_type == "salary" ~ imputed(wage_amnt, 0)
+      pay_type == "salary" ~ imputed(wage_amnt, 0)
     )
 ```
 
@@ -112,10 +116,10 @@ print(dataset)
 #> # Variables: 
 #> • edu_yrs <count>        e.g. 0, 1, 2, ..., 30, NA
 #> • employed <binary>      e.g. 0, 1, NA
-#> • work_hrs <range>       e.g. 0.8, 35.64, 41.87, 26.65, NA
+#> • work_hrs <range>       e.g. 15.76, 22.24, 13.42, 11.78, NA
 #> • pay_type <categorical> e.g. "wage", "salary", NA
-#> • wage_amnt <range>      e.g. 974.6, 984.14, 275.26, 300.27, NA
-#> • salary_amnt <range>    e.g. 214065.04, 346058, 257761.19, 340261.26, NA
+#> • wage_amnt <range>      e.g. 943.31, 88.7, 605.87, 578.18, NA
+#> • salary_amnt <range>    e.g. 287565.92, 31930.69, 54363.02, 288970.23, NA
 #> • income_amnt <derived>
 #> # Survey Logic: 
 #> • is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed))
@@ -192,29 +196,42 @@ for validation, but custom validation will be used in the future.
 
 ## Planned Features
 
-Not implemented in this prototype are planned features to:
+This prototype simulates all variables as independent and uniform. The
+intention is to support the simulation of a mixed design and correlated
+variables.
+[This](https://debruine.github.io/faux/articles/sim_mixed.html), and
+other useful features, are already implemented in Lisa DeBruine’s
+[{faux}](https://debruine.github.io/faux/index.html) package.
 
-- simulate correlations or more advanced dependencies between variables
-  via a model
-- simulate not-at-random missingness
-- generate a correlation / model summary to compare the expected
-  correlation / model in simulation vs. the actual correlation / model
-  realized by actual survey data
-- generate a comparison of not-at-random missingness in the expected and
-  actual data
+I’m not looking to re-invent the wheel here, so some/most of the
+simulation in {surveysimulator} will be powered by {faux} or will be
+implemented following this [paper](https://osf.io/3cz2e/) by Lisa
+DeBruine and Dale J. Barr which is linked in {faux}’s documentation.
 
-For example, the code below (not run) demonstrates adding a linear model
-(e.g. one specified by `lm()`) and a probit model (e.g. one specified by
-`glm(family = binomial(link = "probit")`) to the `dataset` object.
+I do hope to implement some features which are useful for simulating
+survey data, in particular:
 
-``` r
-dataset |>
-  declare_models(
-    probit(employed ~ edu_yrs),
-    linear(income_amnt ~ 1000 * edu_yrs + 50 * work_hrs)
-  )
-```
+- Simulating various \[forms of
+  missingness\](<https://www.ncbi.nlm.nih.gov/books/NBK493614/#>:~:text=Missing%20not%20at%20random%20(MNAR,not%20measured%20by%20the%20researcher.)
+  (e.g. MCAR, MAR, MNAR)
+- Simulating truncated distributions, which can potentially arise from
+  the limiting of electronic survey responses to a fixed range
+  (e.g. hourly wages between \$0 - \$1000)
+- Simulating extreme outliers, which can arise from typos (or loss of
+  interest in the survey)
+- Simulating longitudinal data (i.e. repeated surveys), with
+  differential attrition
 
-In the event that this is not feasible (or useful), a simpler interface
-can be implemented to simulate simple correlations rather than a linear
-(or other) relationship between several variables.
+Additionally, I’d be curious to see if there exists survey-design
+literature on different kinds of survey takers and how to identify them.
+For example a non-compliant-non-dropout respondent, who diligently
+responds to electronic surveys but mashes the first multiple-choice
+option or default value of every question. If so, {surveysimulator} may
+be able to insert such respondents into the simulated dataset.
+[Here](https://pmc.ncbi.nlm.nih.gov/articles/PMC6729115/) is a
+potentially related paper detecting phases of respondent drop-out.
+
+*At the end of the day* I am admittedly prone to scope creep and so
+would like to limit the reach of this package to *simulating survey data
+with conditional logic and missing responses* via a familiar
+{dplyr}-like interface.
