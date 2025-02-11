@@ -20,7 +20,7 @@ at_locations <- function(locations, n = 5) {
   switch(
     as.character(length(locations)),
     `0` = "at no locations",
-    `1` = paste("at 1 location:", locations),
+    `1` = paste("at the location:", locations),
     paste("at", length(locations), "locations:", commas(locations, n = n))
   )
 }
