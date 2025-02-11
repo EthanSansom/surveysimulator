@@ -67,44 +67,44 @@ development. Until then, observe their use below.
 
 ``` r
 dataset <- dataset |>
-  
-    # Declare the variables to simulate, specifying their name and type
-    declare_raw_variables(
-      # `edu_years` is a whole number 0, 1, ..., 30, where the upper
-      # bound of 30 is a limit set by the electronic survey.
-        edu_yrs = count(min = 0, max = 30),
-        employed = binary(missing_perc = 0.1),
-        work_hrs = range(min = 0, max = 60),
-        pay_type = categorical(c("wage", "salary")),
-        wage_amnt = range(min = 0, max = 1000),
-        salary_amnt = range(min = 0, max = 500*1000)
-    ) |>
-    
-    # Declare variables derived from others
-    declare_derived_variables(
-        income_amnt = dplyr::case_match(
-            pay_type,
-            "wage" ~ wage_amnt,
-            "salary" ~ salary_amnt
-        )
-    ) |>
-    
-    # Declare dependencies between the variables arising from survey logic
-    declare_survey_logic(
+
+  # Declare the variables to simulate, specifying their name and type
+  declare_raw_variables(
+    # `edu_years` is a whole number 0, 1, ..., 30, where the upper
+    # bound of 30 is a limit set by the electronic survey.
+    edu_yrs = count(min = 0, max = 30),
+    employed = binary(missing_perc = 0.1),
+    work_hrs = range(min = 0, max = 60),
+    pay_type = categorical(c("wage", "salary")),
+    wage_amnt = range(min = 0, max = 1000),
+    salary_amnt = range(min = 0, max = 500*1000)
+  ) |>
+
+  # Declare variables derived from others
+  declare_derived_variables(
+    income_amnt = dplyr::case_match(
+        pay_type,
+        "wage" ~ wage_amnt,
+        "salary" ~ salary_amnt
+    )
+  ) |>
+
+  # Declare dependencies between the variables arising from survey logic
+  declare_survey_logic(
     # If `employed` is missing (i.e. unanswered) or the
     # respondent is un-employed, then all other questions should 
     # have been skipped (i.e. NA)
-        is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed)),
-        
+    is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed)),
+    
     # If `pay_type` is missing, then `*_amnt` questions
     # should have been skipped
-        is.na(pay_type) ~ skipped(ends_with("_amnt")),
-        
+    is.na(pay_type) ~ skipped(ends_with("_amnt")),
+     
     # If `pay_type` is "wage", `salary_amnt` should have an
-        # imputed value of `0`. Similar for `wage_amnt`.
-        pay_type == "wage" ~ imputed(salary_amnt, 0),
-      pay_type == "salary" ~ imputed(wage_amnt, 0)
-    )
+    # imputed value of `0`. Similar for `wage_amnt`.
+    pay_type == "wage" ~ imputed(salary_amnt, 0),
+    pay_type == "salary" ~ imputed(wage_amnt, 0)
+  )
 ```
 
 Our `dataset` now promises to be composed of the variables declared
@@ -116,10 +116,10 @@ print(dataset)
 #> # Variables: 
 #> • edu_yrs <count>        e.g. 0, 1, 2, ..., 30, NA
 #> • employed <binary>      e.g. 0, 1, NA
-#> • work_hrs <range>       e.g. 15.76, 22.24, 13.42, 11.78, NA
+#> • work_hrs <range>       e.g. 58.27, 21.37, 14.46, 53.34, NA
 #> • pay_type <categorical> e.g. "wage", "salary", NA
-#> • wage_amnt <range>      e.g. 943.31, 88.7, 605.87, 578.18, NA
-#> • salary_amnt <range>    e.g. 287565.92, 31930.69, 54363.02, 288970.23, NA
+#> • wage_amnt <range>      e.g. 818.62, 7.9, 514.76, 791.99, NA
+#> • salary_amnt <range>    e.g. 183068.99, 318691.56, 53660.2, 136182.08, NA
 #> • income_amnt <derived>
 #> # Survey Logic: 
 #> • is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed))
@@ -211,12 +211,12 @@ DeBruine and Dale J. Barr which is linked in {faux}’s documentation.
 I do hope to implement some features which are useful for simulating
 survey data, in particular:
 
-- Simulating various \[forms of
-  missingness\](<https://www.ncbi.nlm.nih.gov/books/NBK493614/#>:~:text=Missing%20not%20at%20random%20(MNAR,not%20measured%20by%20the%20researcher.)
-  (e.g. MCAR, MAR, MNAR)
+- Simulating various [forms of
+  missingness](https://www.ncbi.nlm.nih.gov/books/NBK493614/) (e.g.
+  MCAR, MAR, MNAR)
 - Simulating truncated distributions, which can potentially arise from
-  the limiting of electronic survey responses to a fixed range
-  (e.g. hourly wages between \$0 - \$1000)
+  the limiting of electronic survey responses to a fixed range (e.g.
+  hourly wages between \$0 - \$1000)
 - Simulating extreme outliers, which can arise from typos (or loss of
   interest in the survey)
 - Simulating longitudinal data (i.e. repeated surveys), with
