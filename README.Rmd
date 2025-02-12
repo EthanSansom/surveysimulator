@@ -20,7 +20,6 @@ knitr::opts_chunk$set(
 ```
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
 {surveysimulator} is a package for simulating potentially-complex survey
@@ -42,6 +41,8 @@ you've simulated, allowing data-collection errors to be surfaced
 quickly.
 
 ## Installation
+
+⚠️ This package is still under construction. ⚠️
 
 You can install the development version of {surveysimulator} from
 [GitHub](https://github.com/) with:

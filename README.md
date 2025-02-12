@@ -25,6 +25,8 @@ quickly.
 
 ## Installation
 
+⚠️ This package is still under construction. ⚠️
+
 You can install the development version of {surveysimulator} from
 [GitHub](https://github.com/) with:
 
@@ -116,10 +118,10 @@ print(dataset)
 #> # Variables: 
 #> • edu_yrs <count>        e.g. 0, 1, 2, ..., 30, NA
 #> • employed <binary>      e.g. 0, 1, NA
-#> • work_hrs <range>       e.g. 58.27, 21.37, 14.46, 53.34, NA
+#> • work_hrs <range>       e.g. 57.04, 17.35, 56.67, 43.26, NA
 #> • pay_type <categorical> e.g. "wage", "salary", NA
-#> • wage_amnt <range>      e.g. 818.62, 7.9, 514.76, 791.99, NA
-#> • salary_amnt <range>    e.g. 183068.99, 318691.56, 53660.2, 136182.08, NA
+#> • wage_amnt <range>      e.g. 517.54, 574.28, 741.44, 89.05, NA
+#> • salary_amnt <range>    e.g. 11000.35, 69717.3, 485879.15, 458410.65, NA
 #> • income_amnt <derived>
 #> # Survey Logic: 
 #> • is.na(employed) | employed == 0 ~ skipped(-c(edu_yrs, employed))
